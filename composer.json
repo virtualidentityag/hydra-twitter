@@ -21,7 +21,7 @@
         "themattharris/tmhoauth": "dev-master"
     },
     "autoload": {
-        "psr-0": { "VirtualIdentity\\TwitterBundle": "src/" },
+        "psr-0": { "VirtualIdentity\\TwitterBundle": "src/" }
     },
     "minimum-stability": "dev"
 }

@@ -29,7 +29,7 @@ There exists a getting started guide in the [docs][1] folder.
 Contributing
 ------------
 
-TwitterBundle is an open source, project supported by Virtual Identity AG.
+TwitterBundle is an open source project supported by Virtual Identity AG.
 If you'd like to contribute, please contact the virtual identity development
 team saga - [dev.saga@virtual-identity.com][2]
 

@@ -28,7 +28,7 @@ Add TwitterBundle in your composer.json:
 ```js
 {
     "require": {
-        "virtualidentityag/hydra-twitter": "1.0"
+        "virtualidentityag/hydra-twitter": "0.1.0"
     }
 }
 ```

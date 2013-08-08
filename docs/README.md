@@ -183,12 +183,12 @@ enter the fancy administration area. Correct configuration can be a little
 complicated, but we tried our best to make it as easy as possible. In fact
 the process is straight forward:
 
-1) Open the TwitterBundle configuration interface in your browser
-2) Create a Twitter application with the correct urls set
-3) Enter consumer key and consumer secret
-4) Save the configuration
-5) Sign in via Twitter to obtain the access token and secret
-6) Sync your database
+1. Open the TwitterBundle configuration interface in your browser
+2. Create a Twitter application with the correct urls set
+3. Enter consumer key and consumer secret
+4. Save the configuration
+5. Sign in via Twitter to obtain the access token and secret
+6. Sync your database
 
 #### Step 7.1: Open TwitterBundle configuration
 
@@ -218,9 +218,9 @@ easy to obtain. But first things first.
 Visit https://dev.twitter.com/apps and create your application. Make sure of
 the following things:
 
-1) As website enter https://example.com/hydra/twitter/
-2) As callback url enter https://example.com/hydra/twitter/callbackurl
-3) Make sure "Allow this application to be used to Sign in with Twitter" is
+1. As website enter https://example.com/hydra/twitter/
+2. As callback url enter https://example.com/hydra/twitter/callbackurl
+3. Make sure "Allow this application to be used to Sign in with Twitter" is
 checked
 
 Configure the rest of the settings as you wish (icon, description and so on).
@@ -317,6 +317,7 @@ usage.
 If the code where you want to receive the tweets is in a controller, the
 following example shows how you can iterate over them.
 ``` php
+    // src/YourNamespace/YourBundle/Controller/DefaultController.php
 
     /**
      * @Route("/yourapp/feed", name="your_namespace_feed")
@@ -442,9 +443,10 @@ If you want to store the first mention in the tweet you have to implement a
 setter called "setEntitiesUserMentions0ScreenName".
 
 The strategy used here is:
-1) the response gets flattened to a 1-dimensional array preserving the keys
+
+1. the response gets flattened to a 1-dimensional array preserving the keys
 in a breadcrumb style
-2) the setters of the entity are iterated and it is checked if a camelized
+2. the setters of the entity are iterated and it is checked if a camelized
 attribute exists that matches the setter.
 
 ### Disabling auto aproval of tweets
@@ -506,6 +508,7 @@ you have mysql>=5.3.3 here is an example of how to correctly annotate your
 entities:
 
 ``` php
+// src/YourNamespace/YourBundle/Entity/TwitterEntity.php
 namespace YourNamespace\YourBundle\Entity;
 
 use VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface;

@@ -192,7 +192,7 @@ the process is straight forward:
 
 #### Step 7.1: Open TwitterBundle configuration
 
-To start of we open a browser and navigate to http://example.com/hydra/twitter
+To start off we open a browser and navigate to http://example.com/hydra/twitter
 
 You will notice that you have to enter your credentials set up in Step 3.
 If you are not asked for credentials make sure you did Step 3 correctly.

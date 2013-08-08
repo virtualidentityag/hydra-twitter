@@ -1,5 +1,5 @@
 {
-    "name": "virtualidentityag/hydra",
+    "name": "virtualidentityag/hydra-twitter",
     "type": "library",
     "description": "Twitter Feed Persistence Synchronizer - Part of virtualidentityag/hydra",
     "keywords": ["twitter", "api"],

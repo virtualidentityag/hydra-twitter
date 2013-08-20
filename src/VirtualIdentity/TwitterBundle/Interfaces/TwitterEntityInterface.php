@@ -25,6 +25,8 @@ interface TwitterEntityInterface
     public function getUserScreenName();
     public function setEntitiesMedia0MediaUrl($entitiesMediaMediaUrl);
     public function getEntitiesMedia0MediaUrl();
+    public function setProfileImageUrl($profileImageUrl);
+    public function getProfileImageUrl();
     public function setCreatedAt($createdAt);
     public function getCreatedAt();
     public function setRaw($raw);

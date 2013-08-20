@@ -76,6 +76,13 @@ class TwitterEntity implements TwitterEntityInterface
     /**
      * @var string
      *
+     * @ORM\Column(name="profileImageUrl", type="string", length=255, nullable=true)
+     */
+    private $profileImageUrl;
+
+    /**
+     * @var string
+     *
      * @ORM\Column(name="userScreenName", type="text", length=255)
      */
     protected $userScreenName;
@@ -241,6 +248,29 @@ class TwitterEntity implements TwitterEntityInterface
     {
         return $this->entitiesMedia0MediaUrl;
     }
+
+     /**
+     * Set profileImageUrl
+     *
+     * @param string $profileImageUrl
+     * @return TwitterEntity
+     */
+    public function setProfileImageUrl($profileImageUrl)
+    {
+        $this->profileImageUrl = $profileImageUrl;
+
+        return $this;
+    }
+
+    /**
+     * Get profileImageUrl
+     *
+     * @return string
+     */
+    public function getProfileImageUrl()
+    {
+        return $this->profileImageUrl;
+    }   
 
     /**
      * Get approved

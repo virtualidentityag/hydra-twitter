@@ -76,9 +76,9 @@ class TwitterEntity implements TwitterEntityInterface
     /**
      * @var string
      *
-     * @ORM\Column(name="profileImageUrl", type="string", length=255, nullable=true)
+     * @ORM\Column(name="userProfileImageUrlHttps", type="string", length=255, nullable=true)
      */
-    private $profileImageUrl;
+    private $userProfileImageUrlHttps;
 
     /**
      * @var string
@@ -255,9 +255,9 @@ class TwitterEntity implements TwitterEntityInterface
      * @param string $profileImageUrl
      * @return TwitterEntity
      */
-    public function setProfileImageUrl($profileImageUrl)
+    public function setUserProfileImageUrlHttps($userProfileImageUrlHttps)
     {
-        $this->profileImageUrl = $profileImageUrl;
+        $this->userProfileImageUrlHttps = $userProfileImageUrlHttps;
 
         return $this;
     }
@@ -267,9 +267,9 @@ class TwitterEntity implements TwitterEntityInterface
      *
      * @return string
      */
-    public function getProfileImageUrl()
+    public function getUserProfileImageUrlHttps()
     {
-        return $this->profileImageUrl;
+        return $this->userProfileImageUrlHttps;
     }   
 
     /**

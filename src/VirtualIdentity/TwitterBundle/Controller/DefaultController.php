@@ -139,6 +139,10 @@ class DefaultController extends Controller
             );
             $service->setApiRequests($configurationEntity->getApiRequests());
 
+            array_walk($hydraConfig['virtual_identity_twitter']['api_requests'], function(&$r) { 
+                $r = str_replace ("%", "%%", $r);
+            });
+
             // save changes
             file_put_contents($hydraConfigFile, Yaml::dump($hydraConfig, 3));
 

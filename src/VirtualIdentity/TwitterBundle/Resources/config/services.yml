@@ -13,8 +13,6 @@ services:
         class: VirtualIdentity\TwitterBundle\Services\TwitterService
         arguments: [@logger, @doctrine.orm.entity_manager, @event_dispatcher]
         calls:
-            - [setSocialEntityClass, ["%virtual_identity_twitter.social_entity_class%"]]
             - [setAutoApprove, [%virtual_identity_twitter.auto_approve%]]
             - [setHost, ["%virtual_identity_twitter.host%"]]
             - [setAuthentication, ["%virtual_identity_twitter.consumer_key%", "%virtual_identity_twitter.consumer_secret%", "%virtual_identity_twitter.token%", "%virtual_identity_twitter.secret%"]]
-            - [setApiRequests, ["%virtual_identity_twitter.api_requests%"]]

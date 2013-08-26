@@ -23,6 +23,11 @@ class SyncCommand extends Command
         $this
             ->setName('hydra:twitter:sync')
             ->setDescription('Sync tweets with your database')
+            ->addArgument(
+                'requestId',
+                InputArgument::OPTIONAL,
+                'Which request should be executed (comma-separated, refreshtime ignored)'
+            )
         ;
     }
 
@@ -31,7 +36,15 @@ class SyncCommand extends Command
         $service = $this->getContainer()->get('virtual_identity_twitter');
 
         $output->write('Syncing... ');
-        $service->syncDatabase();
+
+        $requestId = $input->getArgument('requestId');
+        if ($requestId) {
+            $output->write('only api request with id '.$requestId.'... ');
+            $service->syncDatabase(explode(',', $requestId));
+        } else {
+            $service->syncDatabase();
+        }
+
         $output->writeln('Done.');
     }
 }

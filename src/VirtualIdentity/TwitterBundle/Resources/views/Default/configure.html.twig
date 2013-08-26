@@ -10,6 +10,19 @@
             var apiRequestsCount = '{{ form.apiRequests | length }}';
 
             $(document).ready(function() {
+                var entitySelected = function() {
+                    var path = '{{ path('virtual_identity_twitter_get_fields', {'entity': '__name__'}) }}';
+                    var url = path.replace(/__name__/g, $(this).val());
+                    var $select = $(this);
+                    $.ajax(url).done(function(data) {
+                        $orderField = $select.parents('.input-group').find('select[name*="orderField"]');
+                        $orderField.html('');
+                        for (var i in data) {
+                            $orderField.append(new Option(data[i], i));
+                        }
+                    });
+                };
+
                 $('#add-another-api-request').click(function() {
                     var apiRequestList = $('#api-requests-list');
 
@@ -27,6 +40,8 @@
                         html(newWidget).
                         append('<span class="input-group-addon"><a href="javascript://" onclick="jQuery(this).parents(\'li\').remove()">✘</a></span>');
                     newLi.appendTo($('#api-requests-list'));
+                    newLi.find('select[name*="mappedEntity"]').change(entitySelected);
+                    newLi.find('select[name*="mappedEntity"]').change();
 
                     return false;
                 });
@@ -34,9 +49,20 @@
                     window.open('{{ url('virtual_identity_twitter_authorize') }}', 'twitterAuthorization', 'width=640,height=480,scrollbars=no,menubar=no,toolbar=no,status=no,location=no,resizable=yes');
                     return false;
                 });
+                $('#api-requests-list select[name*="mappedEntity"]').change(entitySelected);
             });
         })(jQuery);
     </script>
+    <style>
+        /** TODO: this css settings are akward! use bootstrap styling for the inner form **/
+
+        #api-requests-list .input-group label {
+            width: 200px;
+        }
+        #api-requests-list .input-group input, #api-requests-list .input-group select {
+            width: 300px;
+        }
+    </style>
 {% endblock %}
 
 {% block body %}
@@ -79,6 +105,9 @@
                             </li>
                         {% endfor %}
                         </ul>
+                        {% if form.apiRequests.count == 0 %}
+                        <div style="display:none">{{ form_widget(form.apiRequests) }}</div>
+                        {% endif %}
 
                         <div class="form-group">
                             {{ form_errors(form.consumerKey) }}

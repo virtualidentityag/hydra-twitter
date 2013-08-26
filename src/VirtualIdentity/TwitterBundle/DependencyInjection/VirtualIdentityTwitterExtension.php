@@ -34,16 +34,6 @@ class VirtualIdentityTwitterExtension extends Extension
         $loader->load('services.yml');
 
         $container->setParameter(
-            'virtual_identity_twitter.api_requests',
-            $config['api_requests']
-        );
-
-        $container->setParameter(
-            'virtual_identity_twitter.social_entity_class',
-            $config['social_entity_class']
-        );
-
-        $container->setParameter(
             'virtual_identity_twitter.auto_approve',
             $config['auto_approve']
         );

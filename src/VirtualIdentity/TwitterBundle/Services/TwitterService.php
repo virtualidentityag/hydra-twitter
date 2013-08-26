@@ -52,12 +52,6 @@ class TwitterService
     protected $em;
 
     /**
-     * The class name (fqcn) is used to persist twitter entities
-     * @var String
-     */
-    protected $socialEntityClass;
-
-    /**
      * If new entities should automatically be approved or not
      * @var boolean
      */
@@ -110,17 +104,8 @@ class TwitterService
         $this->dispatcher = $dispatcher;
         $this->logger = $logger;
         $this->em = $em;
-    }
 
-    /**
-     * Sets which class is used to persist the twitter entities.
-     *
-     * @param String $socialEntityClass Use fqcn (Full qualified class name) here.
-     */
-    public function setSocialEntityClass($socialEntityClass)
-    {
-        $this->socialEntityClass = $socialEntityClass;
-        $this->initializeQueryBuilder();
+        $this->loadApiRequests();
     }
 
     /**
@@ -138,7 +123,7 @@ class TwitterService
     /**
      * Sets the host that is used in the API-Requests
      *
-     *  @param String $host API-Host
+     * @param String $host API-Host
      */
     public function setHost($host)
     {
@@ -146,15 +131,34 @@ class TwitterService
     }
 
     /**
-     * Sets the api request used to retrieve the tweets.
-     * At the moment only GET-requests are allowed. For
-     * example 1.1/statuses/user_timeline.json
-     *
-     * @param String $url the api request
+     * Loads the api-requests automatically from the database
      */
-    public function setApiRequests(array $urls)
+    public function loadApiRequests()
     {
-        $this->apiRequests = $urls;
+        $repository = $this->em->getRepository('\VirtualIdentity\TwitterBundle\Entity\TwitterRequestEntity');
+
+        $this->setApiRequests($repository->findAll());
+    }
+
+    /**
+     * Sets the api requests used to retrieve the tweets.
+     * The list must consist of TwitterRequestEntity-objects.
+     *
+     * @param TwitterRequestEntity $twitterRequestEntitities the api request
+     */
+    public function setApiRequests(array $twitterRequestEntitities)
+    {
+        $this->apiRequests = $twitterRequestEntitities;
+    }
+
+    /**
+     * Returns the list of currently loaded api requests
+     *
+     * @return array<TwitterRequestEntity> currently loaded api requests
+     */
+    public function getApiRequests()
+    {
+        return $this->apiRequests;
     }
 
     /**
@@ -188,13 +192,25 @@ class TwitterService
     /**
      * Sets the approval-status of one tweet. Furthermore it dispatches an event.
      *
-     * @param int  $tweetId  the tweet id
-     * @param bool $approved whether or not the tweet is approved
+     * @param int    $tweetId   the tweet id
+     * @param bool   $approved  whether or not the tweet is approved
+     * @param string $requestId which request the tweet belongs to
      * @return bool
      */
-    public function setApproved($tweetId, $approved)
+    public function setApproved($tweetId, $approved, $requestId)
     {
-        $repository = $this->em->getRepository($this->socialEntityClass);
+        $found = false;
+        foreach ($this->apiRequests as $apiRequest) {
+            if ($apiRequest->getId() == $requestId) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            throw new \InvalidArgumentException('The api request with ID '.$requestId.' could not be found!');
+        }
+
+        $repository = $this->em->getRepository($apiRequest->getMappedEntity());
 
         $tweet = $repository->findOneById($tweetId);
 
@@ -229,37 +245,88 @@ class TwitterService
     /**
      * Returns the whole aggregated feed. You can limit the list giving any number.
      *
-     * @param bool $onlyApproved if only approved elements should be returned. default is true.
-     * @param int  $limit        how many items should be fetched at maximum
+     * @param bool  $onlyApproved if only approved elements should be returned. default is true.
+     * @param int   $limit        how many items should be fetched at maximum
+     * @param array $requestIds   which requestIds should be fetched, if left empty all are fetched
      * @return array<TwitterEntityInterface> List of twitter entities
      */
-    public function getFeed($onlyApproved = true, $limit = false)
+    public function getFeed($onlyApproved = true, $limit = false, array $requestIds = array())
     {
-        if ($limit !== false && is_int($limit)) {
-            $this->qb->setMaxResults($limit);
+        $result = array();
+        foreach ($this->apiRequests as $request) {
+            if (count($requestIds) > 0 && !in_array($request->getId(), $requestIds)) {
+                continue;
+            }
+
+            $this->initializeQueryBuilder($request->getId());
+
+            if ($limit !== false && is_int($limit)) {
+                $this->qb->setMaxResults($limit);
+            }
+            if ($onlyApproved) {
+                $this->qb->andWhere('e.approved = true');
+            }
+            $this->qb
+                ->andWhere('e.requestId = :requestId')
+                ->setParameter('requestId', $request->getId());
+
+            $result = array_merge($result, $this->qb->getQuery()->getResult());
         }
-        if ($onlyApproved) {
-            $this->qb->andWhere('e.approved = true');
-        }
-        return $this->qb->getQuery()->getResult();
+
+        return $result;
     }
 
     /**
      * Syncs the database of twitter entities with the entities of each social channel configured
      * to be looked up by the aggregator
      *
+     * @param array requestIds which requestIds should be executed
      * @return void
      */
-    public function syncDatabase()
+    public function syncDatabase(array $requestIds = array())
     {
         if (!$this->api) {
             throw new ApiException('Api not initialized! Use setAuthentication to implicitly initialize the api.');
         }
 
-        foreach ($this->apiRequests as $url) {
+        foreach ($this->apiRequests as $twitterRequestEntity) {
+
+            if (count($requestIds) && !in_array($twitterRequestEntity->getId(), $requestIds)) {
+                continue;
+            }
+
+            if (count($requestIds) == 0
+            && $twitterRequestEntity->getLastExecutionTime() + $twitterRequestEntity->getRefreshLifeTime() > time()) {
+                // we only execute requests if their lifetime is over
+                continue;
+            }
+
+            $socialEntityClass = $twitterRequestEntity->getMappedEntity();
+
+            if (!class_exists($socialEntityClass)
+            && !in_array(
+                'VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface',
+                class_implements($socialEntityClass) // instead uf is_subclass_of because of compatibility with php 5.3.6
+            )) {
+                continue;
+            }
+
+            $start = microtime(true);
+            $url = $twitterRequestEntity->getUrl();
+
             $params = array();
             $query = parse_url($url, PHP_URL_QUERY);
             parse_str($query, $params);
+
+            $lastMaxId = $twitterRequestEntity->getLastMaxId();
+            if ($twitterRequestEntity->getUseSinceId() && is_numeric($lastMaxId)) {
+                $params['since_id'] = $lastMaxId;
+            }
+
+            // twitter limits the maximum amount of tweets that can be fetched
+            // per api request to 200, so making this configurable for the user
+            // seems to make no sense
+            $params['count'] = 200;
 
             $status = $this->api->request(
                 'GET',
@@ -273,27 +340,44 @@ class TwitterService
                 if (isset($response['statuses'])) {
                     $response = $response['statuses'];
                 }
-                $repository = $this->em->getRepository($this->socialEntityClass);
+                $repository = $this->em->getRepository($socialEntityClass);
 
                 foreach ($response as $rawTweet) {
                     if (!isset($rawTweet['id_str'])) {
                         throw new ApiException('Tweet could not be recognized! There was no id_str in the entity: '.print_r($rawTweet, 1));
                     }
                     if (!count($repository->findOneByIdStr($rawTweet['id_str']))) {
-                        $twitterEntity = $this->deserializeRawObject($rawTweet, array('created_at'));
+                        $twitterEntity = $this->deserializeRawObject($rawTweet, array('created_at'), $socialEntityClass);
 
+                        $twitterEntity->setRequestId($twitterRequestEntity->getId());
                         $twitterEntity->setRaw(json_encode($rawTweet));
                         $twitterEntity->setApproved($this->autoApprove);
 
                         $this->em->persist($twitterEntity);
+
+                        if ($rawTweet['id_str'] > $lastMaxId) {
+                            $lastMaxId = $rawTweet['id_str'];
+                        }
                     } else {
                         continue;
                     }
                 }
                 $this->em->flush();
             } else {
+                $twitterRequestEntity->setLastExecutionDuration(-1);
+                $twitterRequestEntity->setLastMaxId($lastMaxId);
+                $this->em->persist($twitterRequestEntity);
+                $this->em->flush();
                 throw new ApiException('Request was unsuccessful! Status code: '.$status.'. Response was: '.$this->api->response['response']);
             }
+
+            $timeTaken = microtime(true) - $start;
+
+            $twitterRequestEntity->setLastExecutionDuration($timeTaken);
+            $twitterRequestEntity->setLastMaxId($lastMaxId);
+            $twitterRequestEntity->setLastExecutionTime(time());
+            $this->em->persist($twitterRequestEntity);
+            $this->em->flush();
         }
     }
 
@@ -417,14 +501,27 @@ class TwitterService
     /**
      * Is called by the constructor. Creates an initializes the query builder.
      * The Entity is set, default ordering by date descending is set
+     *
+     * @param string $requestId the request id for which the builder is initialized
      */
-    protected function initializeQueryBuilder()
+    protected function initializeQueryBuilder($requestId)
     {
+        $found = false;
+        foreach ($this->apiRequests as $apiRequest) {
+            if ($apiRequest->getId() == $requestId) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            throw new \InvalidArgumentException('The api request with ID '.$requestId.' could not be found!');
+        }
+
         $this->qb = $this->em->createQueryBuilder();
         $this->qb
                 ->select('e')
-                ->from($this->socialEntityClass, 'e')
-                ->orderBy('e.createdAt', 'DESC');
+                ->from($apiRequest->getMappedEntity(), 'e')
+                ->orderBy('e.' . $apiRequest->getOrderField(), 'DESC');
     }
 
     /**
@@ -438,9 +535,10 @@ class TwitterService
      *
      * @param  object $object     the json decoded object response by the api
      * @param  array  $dateFields fields that should be formatted as datetime object
+     * @param  string $className  which class should be used to deserialize the raw object
      * @return TwitterEntityInterface
      */
-    protected function deserializeRawObject($object, $dateFields = array())
+    protected function deserializeRawObject($object, $dateFields = array(), $className)
     {
         // flatten object
         $object = self::flatten($object);
@@ -451,7 +549,7 @@ class TwitterService
         }
         $normalizer = new GetSetMethodNormalizer();
         $normalizer->setCamelizedAttributes(array_keys($object));
-        return $normalizer->denormalize($object, $this->socialEntityClass);
+        return $normalizer->denormalize($object, $className);
     }
 
     /**

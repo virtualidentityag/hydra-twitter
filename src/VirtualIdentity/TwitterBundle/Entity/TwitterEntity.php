@@ -17,7 +17,7 @@ use VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface;
 /**
  * TwitterEntity
  *
- * @ORM\Table()
+ * @ORM\Table
  * @ORM\Entity
  */
 class TwitterEntity implements TwitterEntityInterface
@@ -100,6 +100,13 @@ class TwitterEntity implements TwitterEntityInterface
      * @ORM\Column(name="raw", type="text")
      */
     protected $raw;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="requestId", type="string")
+     */
+    protected $requestId;
 
     /**
      * Get id
@@ -270,7 +277,7 @@ class TwitterEntity implements TwitterEntityInterface
     public function getUserProfileImageUrlHttps()
     {
         return $this->userProfileImageUrlHttps;
-    }   
+    }
 
     /**
      * Get approved
@@ -327,5 +334,24 @@ class TwitterEntity implements TwitterEntityInterface
      */
     public function setUserScreenName($userScreenName) {
         $this->userScreenName = $userScreenName;
+    }
+
+    /**
+     * Get requestId
+     *
+     * @return string
+     */
+    public function getRequestId() {
+        return $this->requestId;
+    }
+
+    /**
+     * Set requestId
+     *
+     * @param string $requestId
+     * @return
+     */
+    public function setRequestId($requestId) {
+        $this->requestId = $requestId;
     }
 }

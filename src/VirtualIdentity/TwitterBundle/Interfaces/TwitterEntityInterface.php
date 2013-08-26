@@ -29,6 +29,8 @@ interface TwitterEntityInterface
     public function getUserProfileImageUrlHttps();
     public function setCreatedAt($createdAt);
     public function getCreatedAt();
+    public function setRequestId($requestId);
+    public function getRequestId();
     public function setRaw($raw);
     public function getRaw();
     public function setApproved($approved);

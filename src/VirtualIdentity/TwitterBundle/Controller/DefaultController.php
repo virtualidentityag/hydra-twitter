@@ -13,6 +13,7 @@ namespace VirtualIdentity\TwitterBundle\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 
@@ -57,28 +58,47 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/hydra/twitter/moderate/{tweetId}/{approved}", name="virtual_identity_twitter_moderate")
+     * @Route("/hydra/twitter/moderate/{requestId}/{tweetId}/{approved}", name="virtual_identity_twitter_moderate")
      * @Template()
      */
-    public function moderateAction($tweetId = null, $approved = null)
+    public function moderateAction($requestId = null, $tweetId = null, $approved = null)
     {
         $service = $this->get('virtual_identity_twitter');
 
         if ($tweetId !== null && $approved !== null && is_numeric($tweetId) && ($approved == '1' || $approved == '0')) {
-            $service->setApproved($tweetId, (bool)$approved);
+            $service->setApproved($tweetId, (bool)$approved, $requestId);
+        }
+
+        $return =  array(
+            'credentialsValid' => $service->isAccessTokenValid(),
+            'apiRequests' => $service->getApiRequests()
+        );
+
+        $requestIds = array();
+        $return['apiRequestId'] = '';
+
+        if ($requestId !== null) {
+            $requestIds[] = $requestId;
+            $return['apiRequestId'] = $requestId;
+        }
+
+        $currentPage = $this->get('request')->query->get('page', 1);
+        if ($currentPage) {
+            $return['currentPage'] = $currentPage;
+        } else {
+            $return['currentPage'] = 0;
         }
 
         $paginator  = $this->get('knp_paginator');
         $pagination = $paginator->paginate(
-            $service->getQueryBuilder(),
-            $this->get('request')->query->get('page', 1), /*page number*/
+            $service->getFeed(false, false, $requestIds),
+            $currentPage, /*page number*/
             20 /*limit per page*/
         );
 
-        return array(
-            'credentialsValid' => $service->isAccessTokenValid(),
-            'feed' => $pagination
-        );
+        $return['feed'] = $pagination;
+
+        return $return;
     }
 
     /**
@@ -97,21 +117,56 @@ class DefaultController extends Controller
     }
 
     /**
+     * @Route("/hydra/twitter/getEntityFields", name="virtual_identity_twitter_get_fields")
+     */
+    public function getEntityFieldsAction()
+    {
+        $entityClass = $this->getRequest()->query->get('entity');
+        if (!class_exists($entityClass)) {
+            $r = new JsonResponse('Entity not found', 404);
+            return $r;
+        }
+
+        $methods = get_class_methods($entityClass);
+        $getters = array_filter($methods, function($m) { return substr($m, 0,3) == 'get' ; });
+        $lcFields = array_map(function($g){ return lcfirst(substr($g, 3)); }, $getters);
+        $fields = array();
+        foreach ($lcFields as $k => $v) $fields[$v] = $v;
+
+        return new JsonResponse($fields);
+    }
+
+    /**
      * @Route("/hydra/twitter", name="virtual_identity_twitter_configure")
      * @Template()
      */
     public function configureAction()
     {
         $service = $this->get('virtual_identity_twitter');
+        $repository = $this->getDoctrine()->getManager()->getRepository('\VirtualIdentity\TwitterBundle\Entity\TwitterRequestEntity');
+        $originalRequests = $repository->findAll();
 
         $configurationEntity = new ConfigurationEntity();
-        $configurationEntity->setApiRequests($this->container->getParameter('virtual_identity_twitter.api_requests'));
+        $configurationEntity->setApiRequests($originalRequests);
         $configurationEntity->setConsumerKey($this->container->getParameter('virtual_identity_twitter.consumer_key'));
         $configurationEntity->setConsumerSecret($this->container->getParameter('virtual_identity_twitter.consumer_secret'));
         $configurationEntity->setToken($this->container->getParameter('virtual_identity_twitter.token'));
         $configurationEntity->setSecret($this->container->getParameter('virtual_identity_twitter.secret'));
 
-        $form = $this->createForm(new ConfigurationEntityType(), $configurationEntity);
+        $entities = array();
+        $em = $this->getDoctrine()->getManager();
+        $meta = $em->getMetadataFactory()->getAllMetadata();
+        foreach ($meta as $m) {
+            if (!in_array(
+                'VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface',
+                class_implements($m->getName()) // instead uf is_subclass_of because of compatibility with php 5.3.6
+            )) {
+                continue;
+            }
+            $entities[$m->getName()] = $m->getName();
+        }
+
+        $form = $this->createForm(new ConfigurationEntityType($entities), $configurationEntity);
 
         $form->handleRequest($this->getRequest());
 
@@ -124,7 +179,7 @@ class DefaultController extends Controller
                 $hydraConfig = array();
             }
 
-            $hydraConfig['virtual_identity_twitter']['api_requests']    = $configurationEntity->getApiRequests();
+            //$hydraConfig['virtual_identity_twitter']['api_requests']    = $configurationEntity->getApiRequests();
             $hydraConfig['virtual_identity_twitter']['consumer_key']    = $configurationEntity->getConsumerKey();
             $hydraConfig['virtual_identity_twitter']['consumer_secret'] = $configurationEntity->getConsumerSecret();
             $hydraConfig['virtual_identity_twitter']['token']           = $configurationEntity->getToken();
@@ -139,12 +194,28 @@ class DefaultController extends Controller
             );
             $service->setApiRequests($configurationEntity->getApiRequests());
 
-            array_walk($hydraConfig['virtual_identity_twitter']['api_requests'], function(&$r) { 
-                $r = str_replace ("%", "%%", $r);
-            });
-
             // save changes
             file_put_contents($hydraConfigFile, Yaml::dump($hydraConfig, 3));
+
+
+            $em = $this->getDoctrine()->getManager();
+            $removed = array();
+            foreach ($configurationEntity->getApiRequests() as $request) {
+                $em->persist($request);
+            }
+            foreach ($originalRequests as $oRequest) {
+                $found = false;
+                foreach ($configurationEntity->getApiRequests() as $request) {
+                    if ($oRequest->getId() == $request->getId()) {
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $em->remove($oRequest);
+                }
+            }
+            $em->flush();
 
             // clear cache
             $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($this->get('kernel'));

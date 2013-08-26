@@ -16,6 +16,19 @@ use Symfony\Component\OptionsResolver\OptionsResolverInterface;
 
 class ConfigurationEntityType extends AbstractType
 {
+    /**
+     * folders that are searched for doctrine entities. those entities are then
+     * listed as possible mappings for responses from the twitter api
+     *
+     * @var array
+     */
+    protected $entities;
+
+    public function __construct(array $entities)
+    {
+        $this->entities = $entities;
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
@@ -23,7 +36,7 @@ class ConfigurationEntityType extends AbstractType
                 'apiRequests',
                 'collection',
                 array(
-                    'type' => 'text',
+                    'type' => new RequestEntityType($this->entities),
                     'allow_add' => true,
                     'allow_delete' => true
                 )
@@ -39,6 +52,7 @@ class ConfigurationEntityType extends AbstractType
     {
         $resolver->setDefaults(array(
             'data_class' => 'VirtualIdentity\TwitterBundle\Form\ConfigurationEntity',
+            'cascade_validation' => true
         ));
     }
 

@@ -30,17 +30,6 @@ class Configuration implements ConfigurationInterface
 
         $rootNode
             ->children()
-                ->arrayNode('api_requests')
-                    ->defaultValue(array('1.1/statuses/user_timeline.json'))
-                    ->info('The Twitter-Api-Requests that will be used to retrieve the tweets')
-                    ->example(array('1.1/statuses/user_timeline.json'))
-                    ->prototype('scalar')->end()
-                ->end()
-                ->scalarNode('social_entity_class')
-                    ->defaultValue('VirtualIdentity\TwitterBundle\Entity\TwitterEntity')
-                    ->info('The class that will be used by the TwitterService and persisted. If overwritten, class must implement VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface')
-                    ->example('MyNamespace\MyBundle\Entity\MyTwitterEntity')
-                ->end()
                 ->booleanNode('auto_approve')
                     ->defaultValue(true)
                     ->info('Defines if newly synchronized tweets will be automatically approved or not.')
@@ -72,7 +61,6 @@ class Configuration implements ConfigurationInterface
                     ->example('ENH4q32fLKDlfnls33lfnl348slfALfk')
                 ->end()
             ->end();
-
 
         return $treeBuilder;
     }

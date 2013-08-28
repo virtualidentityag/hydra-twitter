@@ -10,11 +10,10 @@
 
 namespace VirtualIdentity\TwitterBundle\Services;
 
-use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-
 use Doctrine\ORM\EntityManager;
 use Monolog\Logger;
+use JMS\Serializer\SerializerBuilder;
 
 use VirtualIdentity\TwitterBundle\Entity\TwitterEntity;
 use VirtualIdentity\TwitterBundle\Exceptions\ApiException;
@@ -89,9 +88,15 @@ class TwitterService
 
     /**
      * an event dispatcher that is used to dispatch certain events, like when the approval status is changed
-     * @var [type]
+     * @var Symfony\Component\EventDispatcher\EventDispatcherInterface
      */
     protected $dispatcher;
+
+    /**
+     * the serializer used to deserialize the responses from twitter
+     * @var JMS\Serializer\SerializerBuilder
+     */
+    protected $serializer;
 
     /**
      * Creates a new Aggregator Service. The most important methods are the getFeed and syncDatabase methods.
@@ -105,6 +110,7 @@ class TwitterService
         $this->logger = $logger;
         $this->em = $em;
 
+        $this->serializer = SerializerBuilder::create()->build();
         $this->loadApiRequests();
     }
 
@@ -277,8 +283,37 @@ class TwitterService
     }
 
     /**
-     * Syncs the database of twitter entities with the entities of each social channel configured
-     * to be looked up by the aggregator
+     * Iterates all configured api requests, fetches the result and tries to
+     * deserialize the response to the mapped entities chosen for the
+     * corresponding api request.
+     *
+     * Notes on your entities:
+     * * your entities must implement VirtualIdentity\TwitterBundle\Interfaces\TwitterEntity
+     * * the attributes must define the JMS\Serializer\Annotation\Type annotation
+     * * the result from twitter is flattened before its deserialized
+     *
+     * What does the last point mean? This means that if your response has a key
+     * $entry['id_str'] the property "idStr" is populated. If the response has a
+     * key $entry['user']['screen_name'] the property "userScreenName" is
+     * populated. Therefore you can persist whatever information you want to
+     * persist from the direct response by using the correct name for the
+     * entity-field.
+     *
+     * Hint (1):
+     * If your fields don't get deserialized correctly, make use of the
+     * JMS\Serializer\Annotation\SerializedName annotation.
+     *
+     * Hint (2):
+     * If you have special code executed in your setters, you must use the
+     * JMS\Serializer\Annotation\AccessType annotation! Per default reflection
+     * is used and the properties are set directly!
+     *
+     * Warning:
+     * You may not want that the id is populated by deserializing because you
+     * want it to be an incremental value. In this case use a combination of
+     * JMS\Serializer\Annotation\ExclusionPolicy and
+     * JMS\Serializer\Annotation\Exclude or JMS\Serializer\Annotation\Expose
+     * annotations.
      *
      * @param array requestIds which requestIds should be executed
      * @return void
@@ -347,7 +382,10 @@ class TwitterService
                         throw new ApiException('Tweet could not be recognized! There was no id_str in the entity: '.print_r($rawTweet, 1));
                     }
                     if (!count($repository->findOneByIdStr($rawTweet['id_str']))) {
-                        $twitterEntity = $this->deserializeRawObject($rawTweet, array('created_at'), $socialEntityClass);
+                        $flattened = self::flatten($rawTweet);
+                        $rawData = json_encode($flattened);
+
+                        $twitterEntity = $this->serializer->deserialize($rawData, $socialEntityClass, 'json');
 
                         $twitterEntity->setRequestId($twitterRequestEntity->getId());
                         $twitterEntity->setRaw(json_encode($rawTweet));
@@ -522,34 +560,6 @@ class TwitterService
                 ->select('e')
                 ->from($apiRequest->getMappedEntity(), 'e')
                 ->orderBy('e.' . $apiRequest->getOrderField(), 'DESC');
-    }
-
-    /**
-     * The raw response from the api must be mapped to a correctly typed object.
-     * This method does the job flattening the result and by using a GetSetMethodNormalizer.
-     * What does that mean? This means that if your response has a key $entry['id_str'] the
-     * setter setIdStr($entry['id_str']) is used. If the response has a key
-     * $entry['media'][0]['media_url'] the setter setMedia0MediaUrl(..) is used. Therefore
-     * you can persist whatever information you want to persist from the direct response
-     * by using the correct name for the entity-field (and then also for the setter).
-     *
-     * @param  object $object     the json decoded object response by the api
-     * @param  array  $dateFields fields that should be formatted as datetime object
-     * @param  string $className  which class should be used to deserialize the raw object
-     * @return TwitterEntityInterface
-     */
-    protected function deserializeRawObject($object, $dateFields = array(), $className)
-    {
-        // flatten object
-        $object = self::flatten($object);
-        foreach ($dateFields as $df) {
-            if (array_key_exists($df, $object)) {
-                $object[$df] = new \DateTime($object[$df]);
-            }
-        }
-        $normalizer = new GetSetMethodNormalizer();
-        $normalizer->setCamelizedAttributes(array_keys($object));
-        return $normalizer->denormalize($object, $className);
     }
 
     /**

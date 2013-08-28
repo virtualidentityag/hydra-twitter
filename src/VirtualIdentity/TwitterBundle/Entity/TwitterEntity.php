@@ -14,11 +14,14 @@ use Doctrine\ORM\Mapping as ORM;
 
 use VirtualIdentity\TwitterBundle\Interfaces\TwitterEntityInterface;
 
+use JMS\Serializer\Annotation as JMSS;
+
 /**
  * TwitterEntity
  *
  * @ORM\Table
  * @ORM\Entity
+ * @JMSS\ExclusionPolicy("none")
  */
 class TwitterEntity implements TwitterEntityInterface
 {
@@ -28,6 +31,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @ORM\Column(name="id", type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="AUTO")
+     * @JMSS\Exclude
      */
     private $id;
 
@@ -35,6 +39,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="idStr", type="string", length=255)
+     * @JMSS\Type("string")
      */
     private $idStr;
 
@@ -42,6 +47,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="text", type="string", length=255)
+     * @JMSS\Type("string")
      */
     private $text;
 
@@ -49,6 +55,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="source", type="string", length=255)
+     * @JMSS\Type("string")
      */
     private $source;
 
@@ -56,6 +63,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var integer
      *
      * @ORM\Column(name="userId", type="integer")
+     * @JMSS\Type("integer")
      */
     private $userId;
 
@@ -63,6 +71,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var DateTime
      *
      * @ORM\Column(name="createdAt", type="datetime")
+     * @JMSS\Type("DateTime<'D M d H:i:s T Y'>")
      */
     private $createdAt;
 
@@ -70,6 +79,8 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="entitiesMedia0MediaUrl", type="string", length=255, nullable=true)
+     * @JMSS\Type("string")
+     * @JMSS\SerializedName("entities_media_0_media_url")
      */
     private $entitiesMedia0MediaUrl;
 
@@ -77,6 +88,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="userProfileImageUrlHttps", type="string", length=255, nullable=true)
+     * @JMSS\Type("string")
      */
     private $userProfileImageUrlHttps;
 
@@ -84,6 +96,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="userScreenName", type="text", length=255)
+     * @JMSS\Type("string")
      */
     protected $userScreenName;
 
@@ -91,6 +104,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var boolean
      *
      * @ORM\Column(name="approved", type="boolean")
+     * @JMSS\Type("boolean")
      */
     protected $approved;
 
@@ -98,6 +112,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="raw", type="text")
+     * @JMSS\Type("string")
      */
     protected $raw;
 
@@ -105,6 +120,7 @@ class TwitterEntity implements TwitterEntityInterface
      * @var string
      *
      * @ORM\Column(name="requestId", type="string")
+     * @JMSS\Type("string")
      */
     protected $requestId;
 

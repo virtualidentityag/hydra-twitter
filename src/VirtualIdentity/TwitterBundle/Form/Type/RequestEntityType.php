@@ -45,8 +45,7 @@ class RequestEntityType extends AbstractType
                 'choices' => $this->getEntities(),
                 'preferred_choices' => array('VirtualIdentity\TwitterBundle\Entity\TwitterEntity')
             ))
-            ->add('refreshLifeTime', 'integer', array(
-                'data' => 54000))
+            ->add('refreshLifeTime', 'integer')
             ->add('orderField', 'choice', $orderFieldOps)
             ->add('useSinceId', 'checkbox', array(
                 'label' => 'Use since_id',
@@ -110,6 +109,7 @@ class RequestEntityType extends AbstractType
     {
         $resolver->setDefaults(array(
             'data_class' => 'VirtualIdentity\TwitterBundle\Entity\TwitterRequestEntity',
+            'refreshLifeTime' => 54000
         ));
     }
 

@@ -36,7 +36,7 @@ class TwitterRequestEntity
     /**
      * @var string
      *
-     * @ORM\Column(name="url", type="string")
+     * @ORM\Column(name="url", type="string", length=1023)
      */
     protected $url;
 
